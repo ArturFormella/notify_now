@@ -1,0 +1,37 @@
+{
+    "name": "notify_now",
+    "abstract": "PostgreSQL Extension to send multiple responses from one SQL Query using LISTEN/NOFITY API",
+    "description": "This simple extension allows you to return multiple responses from a single query using the built-in PostgreSQL LISTEN/NOTIFY API",
+    "version": "1.0.0",
+    "maintainer": "ArturFormella <Artur.Formella3@gmail.com>",
+    "license": "mit",
+    "provides": {
+        "notify_now": {
+            "file": "notify_now--1.0.sql",
+            "version": "1.0.0"
+        }
+    },
+    "resources": {
+        "bugtracker": {
+            "web": "https://github.com/ArturFormella/notify_now/issues"
+        },
+        "repository": {
+            "url": "git://github.com/ArturFormella/notify_now.git",
+            "web": "https://github.com/ArturFormella/notify_now",
+            "type": "git"
+        }
+    },
+    "generated_by": "ArturFormella",
+    "meta-spec": {
+        "version": "1.0.0",
+        "url": "http://pgxn.org/meta/spec.txt"
+    },
+    "tags": [
+        "notify",
+        "listen",
+        "dynamic result set",
+        "json",
+        "multi result",
+        "async response"
+    ]
+}
