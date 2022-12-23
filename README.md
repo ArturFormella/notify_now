@@ -18,6 +18,34 @@ Responses are sent to the application immediately after the function is executed
 Each query can return any number of responses using this method.
 The PostgreSQL NOTIFY API has many implementations in different languages
 
+API
+----------
+Sending:
+
+    notify_now('channel_name', 'message_content');
+
+Remember - you don't have to query `LISTEN channel_name` to revice messages.
+
+Receiving - If your app is in NodeJS
+
+    client.on('notification', (data) => {
+      console.log(data.channel, data.payload);
+    });
+
+Receiving - If your app is in Java
+
+    PGNotificationListener listener = (int processId, String channelName, String payload) 
+        -> System.out.println("notification = " + payload);
+    connection.addNotificationListener(listener);
+
+
+Limits
+----------
+
+`channel_name` <=64 chars
+
+`message_content` <=2000000000 chars (because of NodeJs connector implementation, can be removed)
+
 
 NodeJS Example
 ----------
