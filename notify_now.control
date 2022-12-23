@@ -1,0 +1,5 @@
+# notify_now extension
+comment = 'notify_now extenstion for PostgreSQL'
+default_version = '1.0'
+module_pathname = '$libdir/notify_now'
+relocatable = true
