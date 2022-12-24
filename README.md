@@ -78,6 +78,8 @@ Build an run:
     npm install
     node ./index.js
 
+![Node Example Result](https://user-images.githubusercontent.com/11973278/209416287-aa1d12ee-bbb2-457f-98f6-242e61a38349.gif)
+
 Installing from PGXN
 ----------
 
