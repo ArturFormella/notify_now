@@ -12,6 +12,9 @@ client.connect();
 // Abstraction layer
 const queryWithNotify = async (client, onMessage, query, args = null) => {
   try {
+    console.log('<query>');
+    console.log(query);
+    console.log('</query>');
     // LISTEN for messages using libpq API but don't have to run LISTEN to inform Postgres.
     client.on('notification', onMessage);
     return await client.query(query, args);
@@ -22,7 +25,8 @@ const queryWithNotify = async (client, onMessage, query, args = null) => {
 };
 
 const prepare = async () => {
-  await client.query(`CREATE EXTENSION IF NOT EXISTS notify_now`);
+  await client.query(`DROP EXTENSION IF EXISTS notify_now;`);
+  await client.query(`CREATE EXTENSION IF NOT EXISTS notify_now;`);
 };
 
 
@@ -30,16 +34,17 @@ const prepare = async () => {
   Baic example - return any part of CTE. Not only the main result.
 */
 const example1 = async () => {
+  console.log('--------------------------------------------------------------------------------');
   console.log('-------------------------------EXAMPLE 1----------------------------------------');
+  console.log('--------------------------------------------------------------------------------');
   const start = Date.now();
 
   const eventReceiver = (data) => {
     const stop = Date.now();
-    console.log(`example1 - channel: ${data.channel},\t${data.payload}\ttime: ${(stop - start)}`);
+    console.log(`Asynchronous notification - channel: ${data.channel},\t${data.payload}\ttime: ${(stop - start)}`);
   };
 
-  const res  = await queryWithNotify(client, eventReceiver, `
-  WITH x AS (
+  const res  = await queryWithNotify(client, eventReceiver, `WITH x AS (
     SELECT
       'name' || pos as name, ((random()*100)::int) as num
     FROM generate_series(1,5) as x(pos)
@@ -48,7 +53,7 @@ const example1 = async () => {
   ), y as (
     SELECT * FROM notify_now('counter2', ((SELECT json_agg(row_to_json(x)) FROM x))::text)
   )
-  SELECT * FROM z, y
+  SELECT FROM z, y
   `);
   
   console.log('main result:', res.rows);
@@ -57,20 +62,21 @@ const example1 = async () => {
 
 /*
   Returns main result, query plan and additional messages.
-  pg_sleep simulate heavy computations.
+  pg_sleep simulates heavy computations.
 */
 
 const example2 = async () => {
+  console.log('--------------------------------------------------------------------------------');
   console.log('-------------------------------EXAMPLE 2----------------------------------------');
+  console.log('--------------------------------------------------------------------------------');
   const start = Date.now();
 
   const eventReceiver = (data) => {
     const stop = Date.now();
-    console.log(`example2 - channel: ${data.channel},\tlength: ${data.payload.length} Bytes\ttime: ${(stop - start)}`);
+    console.log(`Asynchronous notification - channel: ${data.channel},\tlength: ${data.payload.length} Bytes\ttime: ${(stop - start)}`);
   };
 
-  const res = await queryWithNotify(client, eventReceiver, `
-  EXPLAIN ANALYZE
+  const res = await queryWithNotify(client, eventReceiver, `EXPLAIN ANALYZE
   SELECT * FROM
     generate_series(80,85) as s(num), 
     notify_now('channel' || num, repeat('#', num*num*num) ), 
@@ -85,7 +91,10 @@ const example2 = async () => {
 */
 
 const example3 = async () => {
+  console.log();
+  console.log('--------------------------------------------------------------------------------');
   console.log('-------------------------------EXAMPLE 3----------------------------------------');
+  console.log('--------------------------------------------------------------------------------');
 
   await client.query(`CREATE OR REPLACE PROCEDURE public.example()
     LANGUAGE plpgsql
@@ -101,12 +110,9 @@ const example3 = async () => {
 
   const eventReceiver = (data) => {
     const stop = Date.now();
-    console.log(`example3 - channel: ${data.channel},\t${data.payload}`);
+    console.log(`Asynchronous notification - channel: ${data.channel},\t${data.payload}`);
   };
-  const res = await queryWithNotify(client, eventReceiver, `call public.example()`);
-
-  console.log(res.rows);
-
+  await queryWithNotify(client, eventReceiver, `call public.example()`);
 };
 
 
