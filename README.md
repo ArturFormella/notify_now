@@ -3,7 +3,7 @@
 This simple extension allows you to return multiple responses from a single query using the built-in PostgreSQL NOTIFY API.
 There are no additional dependencies.
 
-Responses are sent to the application immediately after the function is executed in postgres, so it does not wait for the query or transaction to complete. This allows you to create many interesting functionalities:
+Responses are sent to the application immediately after the function is executed in Postgres, so it does not wait for the query or transaction to complete. This allows you to create many interesting functionalities:
 
 - start using SQL like GraphQL
 
@@ -38,7 +38,7 @@ Returns:
     Asynchronous notification "important_message" with payload "[6, 7, 8, 9, 10]" - after 1 sec
     Asynchronous notification "other_message" with payload "2022-12-24 01:04:10.624662+01" - after 2 sec
 
-Notice - `psql` console is not asynchronous. Use other lib for tests. pg_sleep simulate heavy computations.
+Notice - `psql` console is not asynchronous. Use other lib for tests. pg_sleep simulates heavy computations.
 
 API
 ----------
@@ -46,15 +46,15 @@ Sending:
 
     notify_now('channel_name', 'message_content');
 
-Remember - you don't have to query `LISTEN channel_name` to receive messages.
+Notice - you don't have to query `LISTEN channel_name` to receive messages.
 
-Receiving - If your app is in NodeJS
+Receiving (NodeJS application)
 
     client.on('notification', (data) => {
       console.log(data.channel, data.payload);
     });
 
-Receiving - If your app is in Java
+Receiving (Java application)
 
     PGNotificationListener listener = (int processId, String channelName, String payload) 
         -> System.out.println("notification = " + payload);
@@ -67,6 +67,56 @@ Limits
 `channel_name` <=64 chars
 
 `message_content` <=2000000000 chars (because of NodeJs connector implementation, can be removed)
+
+
+
+Application architecture with and without notify_now()
+----------
+
+Typically, a controller contains multiple database queries that depend on each other.
+Data is fetched, then additional objects are fetched and everything is combined in the application.
+Example:
+- find products with the right filters
+- fetch the total quantity (count(1))
+- fetch the first page of results sorting by price
+- download categories with quantities of found products
+- download all additional information needed to properly display products, categories and more
+
+Disadvantages of the traditional approach:
+- Sending data to the application only to send it back in WHERE in the next query.
+- `WHERE id IN(...)` Hell
+- frequently used anti-patterns: `foreach(products) {query()}`, `products.map( p => query(p))`
+- JOINS in the application. Not well optimized.
+- application developer needs to understand structures to create full objects
+- multiple execution of the same operations (product filtering)
+- data consistency problems
+- high complexity due to the use of multiple technologies
+- Object-Relational-Mismatch problems
+
+## Solution with notify_now()
+
+Pseudocode:
+```
+WITH matched_products AS (
+  SELECT products WHERE all filters match
+),
+notify_now('all_count', SELECT count(1) FROM matched_products), 
+notify_now('first_page', SELECT * FROM matched_products JOIN descriptions ON(...) LIMIT 30 ORDER BY price),
+categories_counted AS (
+  SELECT category_id, count(1) FROM matched_products GROUP BY category_id
+),
+notify_now('categories_with_counter', SELECT * FROM categories_counted cc JOIN categories c ON (c.category_id = cc.category_id),
+SELECT 'true'
+```
+As you can see the following messages become "API of the query":
+- all_count
+- first_page
+- categories_with_counter
+
+A division of responsibility between database and application developers can be introduced.
+
+![image](https://user-images.githubusercontent.com/11973278/209994337-1834a2c8-ddc0-42f6-abec-027b4c5122da.png)
+
 
 
 NodeJS Example
