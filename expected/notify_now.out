@@ -1,0 +1,90 @@
+CREATE EXTENSION notify_now SCHEMA PUBLIC;
+SELECT public.notify_now(null, null);
+ERROR:  channel name cannot be empty
+SELECT public.notify_now('w', array[678,865]);
+ notify_now 
+------------
+ 
+(1 row)
+
+Asynchronous notification "w" with payload "[678,865]" received from server process with PID 32166.
+SELECT public.notify_now('r', '2346');
+ notify_now 
+------------
+ 
+(1 row)
+
+Asynchronous notification "r" with payload "2346" received from server process with PID 32350.
+SELECT public.notify_now('r', 2346);
+ notify_now 
+------------
+ 
+(1 row)
+
+Asynchronous notification "r" with payload "2346" received from server process with PID 32350.
+WITH x AS (
+    SELECT
+      'name' || pos as name, (row_number() over()*100) as num
+    FROM generate_series(1,5) as x(pos)
+  ), w as (
+    SELECT public.notify_now('w', array[678,865])
+  ), r as (
+    SELECT public.notify_now('r', 2346)
+  ), z as (
+    SELECT public.notify_now('z', ((SELECT sum(x.num) FROM x)))
+  ), s as (
+    SELECT public.notify_now('s', x) FROM x
+  ), y as (
+    SELECT public.notify_now('y', ((SELECT jsonb_agg(row_to_json(x)) FROM x)))
+  ), obj as (
+    SELECT public.notify_now('obj', ((SELECT jsonb_object_agg(x.name, x.num) FROM x)))
+  ), ag1 as (
+    SELECT public.notify_now_agg('aggr1', row_to_json(x)) FROM x 
+  ), ag2 as (
+    SELECT public.notify_now_agg('aggr2', x.name) FROM x
+  ), ag3 as (
+    SELECT public.notify_now_agg('aggr3', x.num) FROM x
+  ), ag4 as (
+    SELECT public.notify_now_agg('aggr4', x) FROM x 
+  )
+  SELECT * FROM 
+  r, w, s, z, y, obj, ag1, ag2, ag3, ag4;
+ notify_now | notify_now | notify_now | notify_now | notify_now | notify_now | notify_now_agg | notify_now_agg | notify_now_agg | notify_now_agg 
+------------+------------+------------+------------+------------+------------+----------------+----------------+----------------+----------------
+            |            |            |            |            |            |                |                |                | 
+            |            |            |            |            |            |                |                |                | 
+            |            |            |            |            |            |                |                |                | 
+            |            |            |            |            |            |                |                |                | 
+            |            |            |            |            |            |                |                |                | 
+(5 rows)
+
+Asynchronous notification "r" with payload "2346" received from server process with PID 32703.
+Asynchronous notification "w" with payload "[678,865]" received from server process with PID 32703.
+Asynchronous notification "z" with payload "1500" received from server process with PID 32703.
+Asynchronous notification "y" with payload "[{"num": 100, "name": "name1"}, {"num": 200, "name": "name2"}, {"num": 300, "name": "name3"}, {"num": 400, "name": "name4"}, {"num": 500, "name": "name5"}]" received from server process with PID 32703.
+Asynchronous notification "obj" with payload "{"name1": 100, "name2": 200, "name3": 300, "name4": 400, "name5": 500}" received from server process with PID 32703.
+Asynchronous notification "aggr1" with payload "[{"name":"name1","num":100},{"name":"name2","num":200},{"name":"name3","num":300},{"name":"name4","num":400},{"name":"name5","num":500}]" received from server process with PID 32703.
+Asynchronous notification "aggr2" with payload "["name1","name2","name3","name4","name5"]" received from server process with PID 32703.
+Asynchronous notification "aggr3" with payload "[100,200,300,400,500]" received from server process with PID 32703.
+Asynchronous notification "aggr4" with payload "[{"name":"name1","num":100},{"name":"name2","num":200},{"name":"name3","num":300},{"name":"name4","num":400},{"name":"name5","num":500}]" received from server process with PID 32703.
+Asynchronous notification "s" with payload "{"name":"name1","num":100}" received from server process with PID 32703.
+Asynchronous notification "s" with payload "{"name":"name2","num":200}" received from server process with PID 32703.
+Asynchronous notification "s" with payload "{"name":"name3","num":300}" received from server process with PID 32703.
+Asynchronous notification "s" with payload "{"name":"name4","num":400}" received from server process with PID 32703.
+Asynchronous notification "s" with payload "{"name":"name5","num":500}" received from server process with PID 32703.
+
+CREATE OR REPLACE PROCEDURE public.example4() LANGUAGE 'plpgsql'
+AS $BODY$
+declare zm text;
+begin
+  CALL public.notify_now_proc('my_message_title', 'my message 1');
+  zm:=(((SELECT json_agg(x) FROM generate_series(6,10) as x(pos))));
+  CALL public.notify_now_proc('important_message', zm);
+  CALL public.notify_now_proc('other_message', 'Wed Dec 28 14:54:23.252127 2022 PST'::date::text);
+  PERFORM pg_sleep(1);
+end;
+$BODY$;
+CALL public.example4();
+Asynchronous notification "my_message_title" with payload "my message 1" received from server process with PID 32929.
+Asynchronous notification "important_message" with payload "[6, 7, 8, 9, 10]" received from server process with PID 32929.
+Asynchronous notification "other_message" with payload "12-28-2022" received from server process with PID 32929.
